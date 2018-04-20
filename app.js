@@ -18,7 +18,7 @@ app.get('/', (req, res) => res.send(
             name: 'API Starter Server',
             apiVersion: '0.1'
         },
-        availableData: {
+        availableDataSeries: {
             topStories: {
                 name: 'New York Times\' Top Stories',
                 description: 'New York Times\' current top stories'
@@ -39,7 +39,15 @@ app.get('/api/topStories', (req, res, next) => {
 
     rp(options)
         .then(stories => {
-            res.send(stories)
+            stories = JSON.parse(stories)
+            let composedResults = stories.results.reduce((withDate, storyObject) => {
+                let publishedDate = new Date(storyObject.published_date).getTime()
+                return [...withDate, [publishedDate, storyObject.multimedia.length]]
+            }, [])
+            res.send({
+                format: "date",
+                initalDataSet: composedResults
+            })
         })
         .catch(err => {
             if (err.response) {
@@ -62,5 +70,3 @@ app.use((err, req, res, next) => {
 })
 
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`))
-
-module.exports = app
