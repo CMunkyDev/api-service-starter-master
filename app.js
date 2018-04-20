@@ -42,6 +42,11 @@ app.get('/api/topStories', (req, res, next) => {
             res.send(stories)
         })
         .catch(err => {
+            if (err.response) {
+                let { statusCode, body } = err.response.toJSON()
+                let { message } = JSON.parse(body)
+                err = {status: statusCode, message: 'NYT API Error: ' + message}
+            }
             next(err)
         })
 })
