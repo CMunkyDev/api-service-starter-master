@@ -1,9 +1,12 @@
 require('dotenv').config()
+
 const express = require('express')
 const app = express()
 const PORT = process.env.port || 8000
+
 const bodyParser = require('body-parser')
 const cors = require('cors')
+const rp = require('request-promise-native')
 
 app.disable('x-powered-by')
 app.use(cors())
@@ -23,6 +26,25 @@ app.get('/', (req, res) => res.send(
         }
     }
 ))
+
+app.get('/api/topStories', (req, res, next) => {
+    let uri = 'https://api.nytimes.com/svc/topstories/v2/home.json'
+    let qs = {
+        'api-key': process.env.NYT_API_KEY
+    }
+    let options = {
+        uri,
+        qs
+    }
+
+    rp(options)
+        .then(stories => {
+            res.send(stories)
+        })
+        .catch(err => {
+            next(err)
+        })
+})
 
 app.use((req, res, next) => {
     next({ status: 404, message: 'Not Found' })
