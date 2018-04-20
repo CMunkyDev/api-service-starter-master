@@ -6,11 +6,14 @@ const PORT = process.env.port || 8000
 
 const bodyParser = require('body-parser')
 const cors = require('cors')
-const rp = require('request-promise-native')
+
+const {availableDataSeries, seriesCallbacks} = require('./seriesObjectGenerator.js')
 
 app.disable('x-powered-by')
 app.use(cors())
 app.use(bodyParser.json())
+
+app.get(`/api/:seriesName`, availabilityCheck, retrieveSpecificSeries)
 
 app.get('/', (req, res) => res.send(
     {
@@ -18,46 +21,26 @@ app.get('/', (req, res) => res.send(
             name: 'API Starter Server',
             apiVersion: '0.1'
         },
-        availableDataSeries: {
-            topStories: {
-                name: 'New York Times\' Top Stories',
-                description: 'New York Times\' current top stories'
-            }
-        }
+        availableDataSeries
     }
 ))
 
-app.get('/api/topStories', (req, res, next) => {
-    let uri = 'https://api.nytimes.com/svc/topstories/v2/home.json'
-    let qs = {
-        'api-key': process.env.NYT_API_KEY
-    }
-    let options = {
-        uri,
-        qs
-    }
 
-    rp(options)
-        .then(stories => {
-            stories = JSON.parse(stories)
-            let composedResults = stories.results.reduce((withDate, storyObject) => {
-                let publishedDate = new Date(storyObject.published_date).getTime()
-                return [...withDate, [publishedDate, storyObject.multimedia.length]]
-            }, [])
-            res.send({
-                format: "date",
-                initalDataSet: composedResults
-            })
-        })
-        .catch(err => {
-            if (err.response) {
-                let { statusCode, body } = err.response.toJSON()
-                let { message } = JSON.parse(body)
-                err = {status: statusCode, message: 'NYT API Error: ' + message}
-            }
-            next(err)
-        })
-})
+function availabilityCheck (req, res, next) {
+    let seriesName = req.params.seriesName
+
+    if (!availableDataSeries[seriesName]) return next({ status: 404, message: `series ${seriesName} not found.` })
+
+    next()
+}
+
+
+function retrieveSpecificSeries (req, res, next) {
+    let seriesName = req.params.seriesName
+
+    seriesCallbacks[seriesName](req, res, next)
+}
+
 
 app.use((req, res, next) => {
     next({ status: 404, message: 'Not Found' })
